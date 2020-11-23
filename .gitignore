@@ -1,0 +1,4 @@
+**/__pycache__
+**/*.pyc
+**/lightning_logs/
+*distilgpt2.pt

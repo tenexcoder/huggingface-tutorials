@@ -4,7 +4,7 @@ from transformers import GPT2LMHeadModel
 
 
 model = GPT2LMHeadModel.from_pretrained('distilgpt2')
-model_state = model.transformer.state_dict()
+model_state = model.state_dict()
 
 num_tokens = model.transformer.wte.num_embeddings
 dim = model.transformer.wte.embedding_dim
@@ -14,16 +14,16 @@ depth = len(list(model.transformer.h.children()))
 performer_state = collections.OrderedDict()
 
 # emb
-performer_state['token_emb.weight'] = model_state['wte.weight']
-performer_state['pos_emb.weight'] = model_state['wpe.weight']
+performer_state['token_emb.weight'] = model_state['transformer.wte.weight']
+performer_state['pos_emb.weight'] = model_state['transformer.wpe.weight']
 
-# emb norm
-performer_state['norm.weight'] = model_state['ln_f.weight']
-performer_state['norm.bias'] = model_state['ln_f.bias']
+# layers norm
+performer_state['norm.weight'] = model_state['transformer.ln_f.weight']
+performer_state['norm.bias'] = model_state['transformer.ln_f.bias']
 
 attn_id = ['to_q', 'to_k', 'to_v']
 for layer_idx in range(depth):
-    from_layer = 'h.' + str(layer_idx)
+    from_layer = 'transformer.h.' + str(layer_idx)
     to_layer = 'performer.net.blocks.' + str(layer_idx)
 
     # attn norm
@@ -64,6 +64,10 @@ for layer_idx in range(depth):
         torch.einsum('ij->ji', model_state[from_layer + '.mlp.c_proj.weight'])
     performer_state[to_layer + '.g.net.fn.fn.w2.bias'] = \
         model_state[from_layer + '.mlp.c_proj.bias']
+
+# decoder head
+# performer_state['head.weight'] = \
+#     model_state['lm_head.weight']
 
 torch.save(performer_state, './distilgpt2.pt')
 print('done porting')
